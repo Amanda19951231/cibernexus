@@ -1,4 +1,5 @@
 version: "3.8"
+
 services:
   db:
     image: mysql:8.0
@@ -28,6 +29,7 @@ services:
       DB_HOST: db
       DB_NAME: monitoramento
       MQTT_HOST: mosquitto
+      RUNNING_IN_DOCKER: "1"   # <-- AQUI !!!
     depends_on:
       - db
       - mosquitto
