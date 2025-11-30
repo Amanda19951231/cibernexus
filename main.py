@@ -1,4 +1,10 @@
-@app.get("/leituras")
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from database import get_db
+from models import Leitura
+
+app = FastAPI()
+
 def listar(equipamento: str = None, db: Session = Depends(get_db)):
     query = db.query(Leitura)
     if equipamento:
