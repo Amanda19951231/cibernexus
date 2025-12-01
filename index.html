@@ -1,517 +1,202 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="utf-8" />
-<title>Dashboard Industrial — JSON-driven</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<title>Dashboard Industrial</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  :root{
-    --bg1:#07101a; --bg2:#0f1a26; --card: rgba(255,255,255,0.04);
-    --glass-border: rgba(255,255,255,0.06);
-    --accent:#22c1ff;
-    --success:#4dff88; --warn:#ffd93b; --danger:#ff4d4f;
-    --glass-blur:10px;
-    --card-radius:16px;
-    --shadow: 0 6px 30px rgba(0,0,0,0.6);
-  }
-  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#e7eef8}
-  .wrap{max-width:1200px;margin:20px auto;padding:20px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  h1{margin:0;font-size:22px;color:var(--accent);text-shadow:0 0 8px rgba(34,193,255,0.08)}
-  .meta{font-size:13px;color:#9fb2c9}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:18px}
-  .card{
-    background:var(--card);backdrop-filter:blur(var(--glass-blur));
-    border-radius:var(--card-radius);padding:16px;border:1px solid var(--glass-border);
-    box-shadow:var(--shadow);transition:transform .16s,box-shadow .16s
-  }
-  .card:hover{transform:translateY(-6px);box-shadow:0 18px 50px rgba(0,0,0,0.7)}
-  .card.alert{border-color:var(--danger);box-shadow:0 0 22px rgba(255,77,77,0.18)}
-  .equip-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .equip-title{display:flex;gap:10px;align-items:center}
-  .dot{width:10px;height:10px;border-radius:50%;box-shadow:0 0 8px rgba(0,0,0,0.4)}
-  .status{font-weight:700;font-size:13px}
-  .metrics{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
-  .metric{background:rgba(255,255,255,0.02);padding:8px;border-radius:10px;font-size:13px;min-width:110px}
-  .big{font-size:18px;font-weight:700}
-  canvas{width:100%;height:110px;border-radius:10px;margin-top:12px;background:linear-gradient(180deg, rgba(0,0,0,0.08), transparent)}
-  /* MEGA GRAPH */
-  #megaCard{grid-column:1/-1;padding:18px}
-  #legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
-  .legend-item{display:flex;gap:8px;align-items:center;font-size:13px}
-  .badge{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px}
-  /* tooltip */
-  .tooltip{position:absolute;background:#05111a;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);font-size:12px;color:#cfe9ff;pointer-events:none;transform:translate(-50%,-120%);display:none}
-  footer{color:#88a5bf;font-size:13px;margin-top:18px;text-align:center}
-  @media (max-width:600px){canvas{height:120px}}
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #121212;
+  color: #fff;
+}
+.tabs {
+  display: flex;
+  background-color: #1f1f2f;
+  overflow-x: auto;
+}
+.tab {
+  padding: 15px 25px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s;
+}
+.tab.active {
+  border-bottom: 3px solid #00e0ff;
+  color: #00e0ff;
+}
+.content {
+  display: none;
+  padding: 20px;
+}
+.content.active {
+  display: block;
+}
+.alert-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.alert {
+  flex: 1 1 200px;
+  padding: 15px;
+  border-radius: 12px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  transition: transform 0.2s;
+}
+.alert:hover {
+  transform: translateY(-3px);
+}
+.alert.active { background-color: #ff4d4d; }
+.alert.inactive { background-color: #2ecc71; }
+.alert span { font-size: 14px; opacity: 0.9; }
+.chart-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+}
+.chart-box {
+  background: linear-gradient(145deg, #1e1e2f, #29293f);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 5px 5px 15px #0a0a15, -5px -5px 15px #22223a;
+}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Planta — Monitoramento em Tempo Real</h1>
-        <div class="meta">Dados consumidos do JSON — simulação local rodando</div>
-      </div>
-      <div class="meta" id="now">Última atualização: --</div>
-    </header>
 
-    <!-- MEGA GRÁFICO -->
-    <div class="card" id="megaCard">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <strong style="font-size:16px">Gráfico Geral — métricas principais por equipamento</strong>
-          <div style="font-size:12px;color:#9fb2c9;margin-top:4px">Aqui o gráfico plota a métrica primária de cada equipamento (temperatura / ciclos / pressão / velocidade) para comparação rápida.</div>
-        </div>
+<div class="tabs">
+  <div class="tab active" data-target="geral">Dashboard Geral</div>
+  <div class="tab" data-target="LASER_001">Corte Laser</div>
+  <div class="tab" data-target="PUNC_001">Puncionadeira</div>
+  <div class="tab" data-target="SERRA_001">Serra Fita</div>
+  <div class="tab" data-target="SOLDA_001">Solda</div>
+  <div class="tab" data-target="DOBRA_001">Dobradeira</div>
+</div>
 
-        <div style="display:flex;gap:8px;align-items:center">
-          <div class="badge" id="refreshBtn" style="background:rgba(34,193,255,0.12);border:1px solid rgba(34,193,255,0.18);cursor:pointer">Pausar/Continuar</div>
-        </div>
-      </div>
-
-      <canvas id="megaGraph" width="1200" height="240"></canvas>
-      <div id="legend"></div>
-      <div class="tooltip" id="tooltip"></div>
-    </div>
-
-    <!-- GRID COM CARTÕES POR MÁQUINA -->
-    <div class="grid" id="cardsGrid">
-      <!-- cards gerados por JS -->
-    </div>
-
-    <footer>Dashboard gerado com base no JSON — pressiona o badge pra pausar simulação.</footer>
+<!-- Dashboard Geral -->
+<div class="content active" id="geral">
+  <div class="chart-container">
+    <div class="chart-box"><canvas id="chart_LASER_001"></canvas></div>
+    <div class="chart-box"><canvas id="chart_PUNC_001"></canvas></div>
+    <div class="chart-box"><canvas id="chart_SERRA_001"></canvas></div>
+    <div class="chart-box"><canvas id="chart_SOLDA_001"></canvas></div>
+    <div class="chart-box"><canvas id="chart_DOBRA_001"></canvas></div>
   </div>
+</div>
+
+<!-- Abas individuais com alertas no topo -->
+<div class="content" id="LASER_001">
+  <div class="alert-container" id="alerts_LASER_001"></div>
+  <div class="chart-box"><canvas id="chart_ind_LASER_001"></canvas></div>
+</div>
+<div class="content" id="PUNC_001">
+  <div class="alert-container" id="alerts_PUNC_001"></div>
+  <div class="chart-box"><canvas id="chart_ind_PUNC_001"></canvas></div>
+</div>
+<div class="content" id="SERRA_001">
+  <div class="alert-container" id="alerts_SERRA_001"></div>
+  <div class="chart-box"><canvas id="chart_ind_SERRA_001"></canvas></div>
+</div>
+<div class="content" id="SOLDA_001">
+  <div class="alert-container" id="alerts_SOLDA_001"></div>
+  <div class="chart-box"><canvas id="chart_ind_SOLDA_001"></canvas></div>
+</div>
+<div class="content" id="DOBRA_001">
+  <div class="alert-container" id="alerts_DOBRA_001"></div>
+  <div class="chart-box"><canvas id="chart_ind_DOBRA_001"></canvas></div>
+</div>
 
 <script>
-/*
-  Dados iniciais copiados do usuário (mantive exatamente os campos).
-  O script:
-   - renderiza cada card com os campos disponíveis
-   - detecta alertas a partir do nó "alertas" do JSON
-   - escolhe uma "métrica primária" por equipamento pra plotar no mega-graph:
-       temperatura_interna / temperatura_motor / temperatura_solda
-       ciclos_hora (puncionadeira) / pressao_hidraulica (dobradeira)
-       velocidade_lâmina (serra)
-     — caso não exista um campo, o script tenta outros campos heurísticos.
-   - faz pequenas variações nos valores a cada tick pra simular tempo real
-   - desenha gráficos suavizados e legenda
-*/
-
-const raw = [
+const equipamentos = [
   {
-    "equipamento":"corte_laser",
-    "id":"LASER_001",
-    "timestamp":"2024-01-15T14:30:00Z",
-    "status_operacional":"executando",
-    "dados_sensores":{
-      "temperatura_interna":42.5,
-      "vibracao":2.1,
-      "consumo_energetico":15.75,
-      "porta_seguranca": true
-    },
-    "alertas":{
-      "temperatura_alta": false,
-      "vibracao_excessiva": false,
-      "porta_aberta": false
-    }
+    id: "LASER_001",
+    dados: {temperatura_interna: 42.5, vibracao: 2.1, consumo_energetico: 15.75, porta_seguranca: 1},
+    alertas: {temperatura_alta: false, vibracao_excessiva: true, porta_aberta: false}
   },
   {
-    "equipamento":"puncionadeira",
-    "id":"PUNC_001",
-    "timestamp":"2024-01-15T14:30:00Z",
-    "status_operacional":"executando",
-    "dados_sensores":{
-      "pressao_hidraulica":120.5,
-      "golpes_por_minuto":45,
-      "emergencia_acionada": false
-    },
-    "metricas_producao":{
-      "ciclos_hora":2700,
-      "eficiencia":92.5
-    },
-    "alertas":{
-      "pressao_alta": false,
-      "emergencia_ativa": false
-    }
+    id: "PUNC_001",
+    dados: {pressao_hidraulica: 120.5, golpes_por_minuto: 45, emergencia_acionada: 0},
+    alertas: {pressao_alta: true, emergencia_ativa: false}
   },
   {
-    "equipamento":"serra_fita",
-    "id":"SERRA_001",
-    "timestamp":"2024-01-15T14:30:00Z",
-    "status_operacional":"executando",
-    "dados_sensores":{
-      "velocidade_lâmina":1250,
-      "vibracao":1.8,
-      "temperatura_motor":65.2
-    },
-    "alertas":{
-      "motor_superaquecendo": false,
-      "vibracao_excessiva": false
-    }
+    id: "SERRA_001",
+    dados: {velocidade_lâmina: 1250, vibracao: 1.8, temperatura_motor: 65.2},
+    alertas: {motor_superaquecendo: false, vibracao_excessiva: false}
   },
   {
-    "equipamento":"solda",
-    "id":"SOLDA_001",
-    "timestamp":"2024-01-15T14:30:00Z",
-    "status_operacional":"executando",
-    "dados_sensores":{
-      "corrente":150.0,
-      "tensao":24.0,
-      "fumaca_particulas":12.5,
-      "temperatura_solda":320.0
-    },
-    "qualidade_solda":{
-      "estabilidade_arco":95.2,
-      "qualidade_media":"excelente"
-    },
-    "alertas":{
-      "fumaca_excessiva": false,
-      "temperatura_alta": false
-    }
+    id: "SOLDA_001",
+    dados: {corrente: 150.0, tensao: 24.0, fumaca_particulas: 12.5, temperatura_solda: 320.0},
+    alertas: {fumaca_excessiva: false, temperatura_alta: true}
   },
   {
-    "equipamento":"dobradeira",
-    "id":"DOBRA_001",
-    "timestamp":"2024-01-15T14:30:00Z",
-    "status_operacional":"executando",
-    "dados_sensores":{
-      "pressao_hidraulica":85.3,
-      "alinhamento_lâmina":0.05,
-      "barreira_optica_ativa": true
-    },
-    "precisao":{
-      "tolerancia_atual":0.02,
-      "desvio_medio":0.01
-    },
-    "alertas":{
-      "alinhamento_fora_especificacao": false,
-      "barreira_violada": false
-    }
+    id: "DOBRA_001",
+    dados: {pressao_hidraulica: 85.3, alinhamento_lâmina: 0.05, barreira_optica_ativa: 1},
+    alertas: {alinhamento_fora_especificacao: false, barreira_violada: false}
   }
 ];
 
-// cores neon pra cada máquina
-const colors = ["#4dd0e1","#7bff8f","#ff8a65","#ff6bcb","#ffd166"];
-
-// estado pra plot/tempo
-const historyLen = 60; // pontos no histórico
-let graphData = raw.map(r => Array(historyLen).fill(null));
-let labels = raw.map(r => friendlyName(r.equipamento));
-let running = true;
-
-// cria cards dinamicamente
-const cardsGrid = document.getElementById('cardsGrid');
-raw.forEach((r,i)=>{
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.id = `card-${i}`;
-
-  // header
-  const header = document.createElement('div');
-  header.className = 'equip-header';
-  header.innerHTML = `
-    <div class="equip-title">
-      <div class="dot" id="dot-${i}" style="background:${colors[i]};opacity:0.95"></div>
-      <div>
-        <div style="font-weight:800">${labels[i]}</div>
-        <div style="font-size:12px;color:#9fb2c9">${r.id} • <span id="ts-${i}">${r.timestamp}</span></div>
-      </div>
-    </div>
-    <div style="text-align:right">
-      <div class="status" id="status-${i}">${r.status_operacional}</div>
-      <div id="alertBadge-${i}" style="margin-top:6px"></div>
-    </div>`;
-  card.appendChild(header);
-
-  // metrics area
-  const metrics = document.createElement('div');
-  metrics.className = 'metrics';
-  metrics.id = `metrics-${i}`;
-  card.appendChild(metrics);
-
-  // canvas
-  const cnv = document.createElement('canvas');
-  cnv.id = `canvas-${i}`;
-  cnv.width = 600;
-  cnv.height = 160;
-  card.appendChild(cnv);
-
-  cardsGrid.appendChild(card);
-});
-
-// mounted: build legend + mega canvas scaling
-const megaCanvas = document.getElementById('megaGraph');
-const megaCtx = megaCanvas.getContext('2d');
-const legend = document.getElementById('legend');
-const tooltip = document.getElementById('tooltip');
-
-raw.forEach((r,i)=>{
-  const li = document.createElement('div');
-  li.className = 'legend-item';
-  li.innerHTML = `<div style="width:12px;height:12px;background:${colors[i]};border-radius:4px;box-shadow:0 0 10px ${colors[i]}"></div><div>${labels[i]}</div>`;
-  legend.appendChild(li);
-});
-
-// última atualização
-function updateNow() {
-  document.getElementById('now').textContent = 'Última atualização: ' + new Date().toLocaleString();
-}
-updateNow();
-
-// heurística pra escolher métrica principal e label
-function pickPrimary(r){
-  const s = r.dados_sensores || {};
-  if('temperatura_interna' in s) return {v: s.temperatura_interna, key:'temperatura_interna', label:'Temperatura (°C)'};
-  if('temperatura_motor' in s) return {v: s.dados_sensores.temperatura_motor, key:'temperatura_motor', label:'Temp motor (°C)'};
-  if('temperatura_solda' in s) return {v: s.dados_sensores.temperatura_solda, key:'temperatura_solda', label:'Temp solda (°C)'};
-  if(r.metricas_producao && 'ciclos_hora' in r.metricas_producao) return {v: r.metricas_producao.ciclos_hora, key:'ciclos_hora', label:'Ciclos/h'};
-  if('velocidade_lâmina' in s) return {v: s['velocidade_lâmina'], key:'velocidade_lâmina', label:'Velocidade lâmina (RPM)'};
-  if('pressao_hidraulica' in s) return {v: s.pressao_hidraulica, key:'pressao_hidraulica', label:'Pressão (bar?)'};
-  if('corrente' in s) return {v: s.corrente, key:'corrente', label:'Corrente (A)'};
-  // fallback: pega primeiro número encontrado
-  for(const k in s) if(typeof s[k] === 'number') return {v:s[k], key:k, label:k};
-  return {v:0,key:'none',label:'—'};
+function simulateData(value) {
+  const variation = value * 0.05;
+  return +(value + (Math.random() * variation*2 - variation)).toFixed(2);
 }
 
-// função que escreve os campos do card (dinâmico conforme json)
-function renderCard(i){
-  const r = raw[i];
-  const root = document.getElementById(`card-${i}`);
-  const metricsBox = document.getElementById(`metrics-${i}`);
-  metricsBox.innerHTML = ''; // limpa
-
-  // status e alertas
-  const statusEl = document.getElementById(`status-${i}`);
-  statusEl.textContent = r.status_operacional || '—';
-  const alertBadge = document.getElementById(`alertBadge-${i}`);
-  alertBadge.innerHTML = '';
-
-  // varre alertas
-  const alerts = r.alertas || {};
-  const alertKeys = Object.keys(alerts).filter(k => alerts[k] === true);
-  if(alertKeys.length){
-    root.classList.add('alert');
-    const b = document.createElement('div'); b.style.color='var(--danger)'; b.style.fontWeight=800; b.textContent = 'ALERTA';
-    alertBadge.appendChild(b);
-    alertKeys.forEach(a=>{
-      const pill = document.createElement('div'); pill.style.fontSize='12px'; pill.style.color='#ffdfe0'; pill.style.marginTop='4px';
-      pill.textContent = a.replace(/_/g,' ');
-      metricsBox.appendChild(pill);
-    });
-  } else {
-    root.classList.remove('alert');
-    const ok = document.createElement('div'); ok.style.color='#9fb2c9'; ok.textContent = 'Sem alertas';
-    alertBadge.appendChild(ok);
-  }
-
-  // sensore/metricas list
-  const df = r.dados_sensores || {};
-  const mp = r.metricas_producao || {};
-  const extra = {...df, ...mp, ...(r.precisao||{}), ...(r.qualidade_solda||{})};
-
-  // ordena e mostra
-  Object.keys(extra).forEach(k=>{
-    const m = document.createElement('div'); m.className='metric';
-    const v = extra[k];
-    m.innerHTML = `<div style="font-size:12px;color:#9fb2c9">${k.replace(/_/g,' ')}</div><div class="big">${formatVal(v)}</div>`;
-    metricsBox.appendChild(m);
-  });
-
-  // primary metric label under timestamp (for info)
-  const primary = pickPrimary(r);
-  const ts = document.getElementById(`ts-${i}`);
-  ts.textContent = new Date(r.timestamp).toLocaleString() + ` • ${primary.label}: ${formatVal(primary.v)}`;
-}
-
-// util formata valor
-function formatVal(v){
-  if(typeof v === 'number'){
-    if(Number.isInteger(v)) return v;
-    return Number(v).toFixed(1);
-  }
-  if(typeof v === 'boolean') return v? 'true':'false';
-  return v===undefined? '—':String(v);
-}
-
-// função de "ruído" pra simular live
-function jitter(val){
-  if(typeof val !== 'number') return val;
-  // aplica pequena variação percentual
-  const pct = (Math.random()*2 - 1) * 0.02; // +-2%
-  return +(val*(1+pct)).toFixed(2);
-}
-
-// inicializa histórico com valores base
-raw.forEach((r,i)=>{
-  const prim = pickPrimary(r).v || 0;
-  graphData[i] = Array(historyLen).fill(null).map((_,k) => prim + (Math.random()-0.5)*prim*0.02);
-});
-
-// desenha gráfico suavizado
-function drawSmooth(ctx, arr, color, fill=false){
-  const w = ctx.canvas.width, h = ctx.canvas.height;
-  ctx.save();
-  ctx.clearRect(0,0,w,h);
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = color;
-  ctx.shadowColor = color; ctx.shadowBlur = 12; ctx.lineJoin='round'; ctx.lineCap='round';
-  // encontra min/max no arr
-  const nums = arr.filter(x=>x!==null && !isNaN(x));
-  if(nums.length===0){ctx.restore(); return;}
-  const min = Math.min(...nums); const max = Math.max(...nums);
-  const range = max===min? (max||1) : max-min;
-  const stepX = w / (historyLen-1);
-  ctx.beginPath();
-  for(let i=0;i<arr.length;i++){
-    const v = arr[i];
-    const x = i*stepX;
-    const y = v===null? h/2 : (h - ((v-min)/range)*(h*0.84) - h*0.08);
-    if(i===0) ctx.moveTo(x,y);
-    else ctx.lineTo(x,y);
-  }
-  ctx.stroke();
-  if(fill){
-    // area fill with gradient
-    ctx.globalCompositeOperation='destination-over';
-    const g = ctx.createLinearGradient(0,0,0,h);
-    g.addColorStop(0,hexToRgba(color,0.12));
-    g.addColorStop(1,hexToRgba(color,0.01));
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,w,h);
-  }
-  ctx.restore();
-}
-
-// helper hex to rgba
-function hexToRgba(hex,a=1){
-  const c = hex.replace('#','');
-  const bigint = parseInt(c,16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r},${g},${b},${a})`;
-}
-
-// desenha *todos* os gráficos individuais
-function drawIndividuals(){
-  raw.forEach((r,i)=>{
-    const cnv = document.getElementById(`canvas-${i}`);
-    const ctx = cnv.getContext('2d');
-    // high-DPI scale
-    scaleCanvas(cnv);
-    drawSmooth(ctx, graphData[i], colors[i], true);
-  });
-}
-
-// desenha mega (sobrepondo cada série)
-function drawMega(){
-  scaleCanvas(megaCanvas);
-  const ctx = megaCanvas.getContext('2d');
-  // limpa
-  ctx.clearRect(0,0,megaCanvas.width,megaCanvas.height);
-  // pra cada máquina desenha sua série normalizada ao próprio min/max (padrão)
-  for(let i=0;i<raw.length;i++){
-    drawSmooth(ctx, graphData[i], colors[i], true);
-  }
-}
-
-// escala canvas para devicePixelRatio
-function scaleCanvas(c){
-  const ratio = window.devicePixelRatio || 1;
-  const w = c.clientWidth;
-  const h = c.clientHeight;
-  if(c.width !== Math.floor(w*ratio) || c.height !== Math.floor(h*ratio)){
-    c.width = Math.floor(w*ratio);
-    c.height = Math.floor(h*ratio);
-  }
-  const ctx = c.getContext('2d');
-  ctx.setTransform(ratio,0,0,ratio,0,0);
-}
-
-// update loop: aplica jitter, atualiza timestamps, re-render de cards + gráficos
-function tick(){
-  if(!running) return;
-  raw.forEach((r,i)=>{
-    // aplica pequenas variações nos sensores numéricos
-    const ds = r.dados_sensores || {};
-    Object.keys(ds).forEach(k=>{
-      if(typeof ds[k] === 'number') ds[k] = jitter(ds[k]);
-    });
-    // métricas de produção
-    if(r.metricas_producao){
-      Object.keys(r.metricas_producao).forEach(k=>{
-        if(typeof r.metricas_producao[k] === 'number') r.metricas_producao[k] = jitter(r.metricas_producao[k]);
-      });
+function createLineChart(canvasId, dataObj) {
+  const labels = Array.from({length: 20}, (_, i) => `T-${20-i}`);
+  const datasets = Object.entries(dataObj).map(([key, val], idx) => ({
+    label: key,
+    data: labels.map(() => simulateData(val)),
+    borderColor: `hsl(${idx*60}, 70%, 60%)`,
+    backgroundColor: 'transparent',
+    tension: 0.3,
+    pointRadius: 3
+  }));
+  new Chart(document.getElementById(canvasId), {
+    type: 'line',
+    data: {labels, datasets},
+    options: {
+      responsive: true,
+      plugins: {legend: {labels: {color: '#fff'}}},
+      scales: {
+        x: {ticks: {color: '#fff'}, grid: {color: '#333'}},
+        y: {ticks: {color: '#fff'}, grid: {color: '#333'}}
+      }
     }
-    // timestamp atual
-    r.timestamp = new Date().toISOString();
-    // primary metric update into history
-    const p = pickPrimary(r);
-    let val = p.v;
-    if(typeof val !== 'number') val = Number(p.v) || 0;
-    // small random walk instead of absolute jitter for smoother lines
-    const prev = graphData[i][graphData[i].length-1] || val;
-    const walk = prev + (Math.random()-0.5) * (Math.max(1,Math.abs(prev))*0.02);
-    graphData[i].push(Math.max(0, +(walk).toFixed(2)));
-    if(graphData[i].length > historyLen) graphData[i].shift();
-    // render card
-    renderCard(i);
   });
-
-  updateNow();
-  drawIndividuals();
-  drawMega();
 }
 
-// start ticks
-const interval = setInterval(()=>tick(), 1100);
+// Cria gráficos e alertas
+equipamentos.forEach(eq => {
+  createLineChart(`chart_${eq.id}`, eq.dados);
+  createLineChart(`chart_ind_${eq.id}`, eq.dados);
 
-// initial render
-raw.forEach((_,i)=>renderCard(i));
-drawIndividuals();
-drawMega();
-
-// pause/resume button
-document.getElementById('refreshBtn').addEventListener('click',()=>{
-  running = !running;
-  document.getElementById('refreshBtn').textContent = running? 'Pausar/Continuar':'Pausado';
-});
-
-// tooltip interactivity on mega canvas (show nearest values)
-megaCanvas.addEventListener('mousemove',(ev)=>{
-  const rect = megaCanvas.getBoundingClientRect();
-  const x = ev.clientX - rect.left;
-  const idx = Math.round((x / rect.width) * (historyLen-1));
-  if(idx < 0 || idx >= historyLen) { tooltip.style.display='none'; return; }
-  // build tooltip content
-  let html = `<strong style="color:${'#cfe9ff'}">t-${historyLen-1-idx}s</strong><br>`;
-  raw.forEach((r,i)=>{
-    const v = graphData[i][idx];
-    html += `<span style="color:${colors[i]};font-weight:700">${labels[i]}:</span> ${v===null? '—' : formatVal(v)}<br>`;
-  });
-  tooltip.innerHTML = html;
-  tooltip.style.display = 'block';
-  tooltip.style.left = (ev.clientX - rect.left) + 'px';
-  tooltip.style.top = (ev.clientY - rect.top) + 'px';
-});
-megaCanvas.addEventListener('mouseleave',()=> tooltip.style.display='none');
-
-// responsive redraw on resize
-window.addEventListener('resize',()=>{
-  drawIndividuals(); drawMega();
-});
-
-/* helper: pretty name */
-function friendlyName(k){
-  switch(k){
-    case 'corte_laser': return 'Laser de Corte';
-    case 'puncionadeira': return 'Puncionadeira';
-    case 'serra_fita': return 'Serra Fita';
-    case 'solda': return 'Solda';
-    case 'dobradeira': return 'Dobradeira';
-    default: return k;
+  const container = document.getElementById(`alerts_${eq.id}`);
+  for (const [alertName, active] of Object.entries(eq.alertas)) {
+    const div = document.createElement('div');
+    div.className = `alert ${active ? 'active' : 'inactive'}`;
+    div.innerHTML = `${alertName.replace(/_/g,' ')} <span>${active ? 'ATIVO' : 'OK'}</span>`;
+    container.appendChild(div);
   }
-}
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.target).classList.add('active');
+  });
+});
 </script>
+
 </body>
 </html>

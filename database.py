@@ -17,12 +17,17 @@ else:
     DB_HOST = "localhost"
     DB_NAME = "monitoramento"
 
-DATABASE_URL = f"mysql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
+DATABASE_URL = f"mysql://{DB_USER}:{DB_PASS}@{DB_HOST}:3306/{DB_NAME}"
+
 
 try:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-except:
-    print("⚠ Aviso: Banco de dados indisponível. A API continua rodando normalmente.")
+    # Testa conexão
+    with engine.connect() as conn:
+        print("✅ Conectado ao banco com sucesso")
+except Exception as e:
+    print(f"⚠ Não foi possível conectar ao banco: {e}")
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

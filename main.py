@@ -5,6 +5,7 @@ from models import Leitura
 
 app = FastAPI()
 
+@app.get("/leituras/")
 def listar(equipamento: str = None, db: Session = Depends(get_db)):
     query = db.query(Leitura)
     if equipamento:
